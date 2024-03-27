@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Form</title>
+</head>
+
+<body>
+  <h2>Login Form</h2>
+  <form id="loginForm" enctype="multipart/form-data">
+    <label for="email">Email:</label><br>
+    <input type="email" id="email" name="email" required><br><br>
+    <label for="password">Password:</label><br>
+    <input type="password" id="password" name="password" required><br><br>
+    <button type="submit">Submit</button>
+  </form>
+
+  <hr>
+
+  <div id="user-data">
+  </div>
+
+  <hr>
+
+  <div id="profile-form">
+    <h2>Update User Profile</h2>
+    <form id="updateProfileForm" enctype="multipart/form-data">
+      <label for="newEmail">Email:</label><br>
+      <input type="text" id="newEmail" name="newEmail"><br><br>
+      <label for="firstName">First Name:</label><br>
+      <input type="text" id="firstName" name="firstName"><br><br>
+      <label for="lastName">Last Name:</label><br>
+      <input type="text" id="lastName" name="lastName"><br><br>
+      <label for="newPhoto">New Photo</label><br>
+      <input type="file" name="newPhoto" id="newPhoto"><br><br>
+      <button type="submit">Update Profile</button>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const data = { email, password };
+
+      let token = localStorage.getItem('token');
+
+      document.getElementById('loginForm').addEventListener('submit', function () {
+        axios.post('https://dev.ruangtunggu.id/api/v1/auth/login/', data, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+          .then(response => {
+            console.log('Status code:', response.status);
+            if (response.status === 200) {
+              return response.data;
+            } else {
+              throw new Error('Login failed');
+            }
+          })
+          .then(data => {
+            console.info(data);
+            token = data.access;
+            localStorage.setItem('token', token);
+          })
+          .catch(error => {
+            if (error.response) {
+              console.log('Status code:', error.response.status);
+            } else if (error.request) {
+              console.error('No response received:', error.request);
+            } else {
+              console.error('Error occurred:', error.message);
+            }
+          });
+
+        console.info(token);
+      });
+    });
+
+    let token = localStorage.getItem('token');
+
+    axios.get('https://dev.ruangtunggu.id/api/v1/user/', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then(userResponse => {
+        const userDataDiv = document.getElementById('user-data');
+        const userList = document.createElement('ul');
+
+        const userData = userResponse.data;
+        document.getElementById('user-data').innerHTML = ` 
+          <h2>User Profile</h2>         
+          <ul>
+            <li>Email: ${userData.email}</li>
+            <li>Is Verified: ${userData.is_verified}</li>     
+            <p>Profile:</p>
+            <ul>
+              <li>First Name: ${userData.profile.first_name}</li>
+              <li>Last Name: ${userData.profile.last_name}</li>
+              <li><img src='${userData.profile.photo}' width="35px"></li>
+            </ul>
+          </ul>
+          `;
+
+        document.getElementById('newEmail').value = userData.email;
+        document.getElementById('firstName').value = userData.profile.first_name;
+        document.getElementById('lastName').value = userData.profile.last_name;
+        document.getElementById('newPhoto').src = userData.profile.photo;
+
+      })
+      .catch(error => {
+        console.error('Error fetching user data:', error);
+      });
+
+
+    // // Profile update form submission
+    document.getElementById('updateProfileForm').addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const newEmail = document.getElementById('newEmail').value;
+      const firstName = document.getElementById('firstName').value;
+      const lastName = document.getElementById('lastName').value;
+      const newPhotoInput = document.getElementById('newPhoto');
+      const newPhoto = newPhotoInput.files[0];
+
+      const formData = new FormData();
+      // Append email if it's not empty
+      if (newEmail.trim() !== '') {
+        formData.append('email', newEmail);
+      }
+
+      // Append other profile fields only if they are not empty
+      if (firstName.trim() !== '') {
+        formData.append('profile.first_name', firstName);
+      }
+      if (lastName.trim() !== '') {
+        formData.append('profile.last_name', lastName);
+      }
+      if (newPhoto) {
+        formData.append('profile.photo', newPhoto, newPhoto.name);
+      }
+
+      console.log('Body yang dikirim:', formData);
+
+      // Menambahkan interceptor untuk request
+      axios.interceptors.request.use(request => {
+        console.log('Request:', request);
+        return request;
+      });
+
+      axios.patch('https://dev.ruangtunggu.id/api/v1/user/', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        }
+      })
+        .then(response => {
+          console.log('Response:', response)
+          console.log('Status code:', response.status);
+          if (response.status === 200) {
+            alert('Profile updated successfully.');
+            window.location.reload()
+            // Refresh user data after profile update
+          } else {
+            throw new Error('Profile update failed');
+          }
+        })
+        .catch(error => {
+          console.error('Error updating profile:', error);
+        });
+    });
+  </script>
+</body>
+
+</html>
