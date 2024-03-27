@@ -68,6 +68,7 @@
             console.info(data);
             token = data.access;
             localStorage.setItem('token', token);
+            window.location.reload()
           })
           .catch(error => {
             if (error.response) {
